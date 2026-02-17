@@ -1,48 +1,12 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '../../contexts/NavigationContext';
 import { Breadcrumb } from '../common/Breadcrumb';
 import { colors } from '../../theme/colors';
 import { spacing, radii } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-
-// Placeholder data - in real app, fetch by studentId from navigation context
-const PLACEHOLDER_STUDENT = {
-  id: 1,
-  name: 'Aiden Montgomery',
-  grade: 'Grade 10',
-  section: 'Sec A',
-  roll: '1024',
-  email: 'aiden.m@school.edu',
-  phone: '+1 (555) 123-4567',
-  dateOfBirth: '2008-05-15',
-  admissionDate: '2022-09-01',
-  address: '123 Main Street, City, State 12345',
-  status: 'ACTIVE',
-  role: 'prefect', // null, 'prefect', 'headboy', 'headgirl', 'deputy-headboy', 'deputy-headgirl'
-  isGraduated: false,
-  graduationYear: null,
-  parent: {
-    name: 'Sarah Montgomery',
-    relationship: 'Mother',
-    email: 'sarah.montgomery@email.com',
-    phone: '+1 (555) 123-4568',
-  },
-  performance: {
-    overallGPA: 3.85,
-    attendance: 96,
-    behaviorScore: 4.2,
-    term: '2024 Spring',
-  },
-  courses: [
-    { subject: 'Mathematics', teacher: 'Dr. Sarah J.', grade: 'A', gpa: 4.0, room: 'C101' },
-    { subject: 'English', teacher: 'E. Rodriguez', grade: 'A-', gpa: 3.7, room: 'C103' },
-    { subject: 'Physics', teacher: 'M. Thorne', grade: 'B+', gpa: 3.3, room: 'C102' },
-    { subject: 'Chemistry', teacher: 'J. Vane', grade: 'A', gpa: 4.0, room: 'C105' },
-    { subject: 'Biology', teacher: 'Dr. Chen', grade: 'A-', gpa: 3.7, room: 'C106' },
-    { subject: 'History', teacher: 'L. Williams', grade: 'B+', gpa: 3.3, room: 'C107' },
-  ],
-};
+import { useEffect, useState } from 'react';
+import { fetchStudentProfile } from '../../api/students';
 
 function StatusBadge({ role }) {
   if (!role) return null;
@@ -75,7 +39,58 @@ function StatusPill({ status }) {
 
 export function StudentProfileContent() {
   const { goTo, studentId } = useNavigation();
-  const student = PLACEHOLDER_STUDENT; // In real app: fetch by studentId
+  const [student, setStudent] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function load() {
+      if (!studentId) {
+        setError('No student selected.');
+        setLoading(false);
+        return;
+      }
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await fetchStudentProfile(studentId);
+        if (!isMounted) return;
+        setStudent(data);
+      } catch (e) {
+        if (isMounted) setError(e.message || 'Failed to load student');
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+    load();
+    return () => {
+      isMounted = false;
+    };
+  }, [studentId]);
+
+  if (loading) {
+    return (
+      <View style={styles.loadingWrap}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
+  if (error || !student) {
+    return (
+      <View style={styles.loadingWrap}>
+        <Text style={styles.errorText}>{error || 'Student not found.'}</Text>
+        <Pressable style={styles.backBtn} onPress={() => goTo('students')}>
+          <MaterialCommunityIcons name="arrow-left" size={20} color={colors.textPrimary} />
+          <Text style={styles.backBtnText}>Back</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  const firstParent = (student.parents && student.parents[0]) || null;
+  const performance = student.performance || {};
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -89,7 +104,9 @@ export function StudentProfileContent() {
               <Text style={styles.name}>{student.name}</Text>
               <StatusBadge role={student.role} />
             </View>
-            <Text style={styles.meta}>{student.grade} • {student.section} • Roll #{student.roll}</Text>
+              <Text style={styles.meta}>
+                {student.grade} • {student.section}{student.rollNumber ? ` • Roll #${student.rollNumber}` : ''}
+              </Text>
             <View style={styles.statusRow}>
               <StatusPill status={student.status} />
               {student.isGraduated && (
@@ -124,15 +141,19 @@ export function StudentProfileContent() {
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Date of Birth</Text>
-            <Text style={styles.infoValue}>{new Date(student.dateOfBirth).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</Text>
+            <Text style={styles.infoValue}>
+              {student.dateOfBirth ? new Date(student.dateOfBirth).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '—'}
+            </Text>
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Admission Date</Text>
-            <Text style={styles.infoValue}>{new Date(student.admissionDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</Text>
+            <Text style={styles.infoValue}>
+              {student.admissionDate ? new Date(student.admissionDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : '—'}
+            </Text>
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Address</Text>
-            <Text style={styles.infoValue}>{student.address}</Text>
+            <Text style={styles.infoValue}>{student.address || '—'}</Text>
           </View>
         </View>
 
@@ -145,17 +166,17 @@ export function StudentProfileContent() {
           <View style={styles.parentCard}>
             <View style={styles.parentAvatar} />
             <View style={styles.parentInfo}>
-              <Text style={styles.parentName}>{student.parent.name}</Text>
-              <Text style={styles.parentRelationship}>{student.parent.relationship}</Text>
+              <Text style={styles.parentName}>{firstParent?.name ?? '—'}</Text>
+              <Text style={styles.parentRelationship}>{firstParent?.relationship ?? ''}</Text>
             </View>
           </View>
           <View style={styles.infoRow}>
             <MaterialCommunityIcons name="email-outline" size={16} color={colors.textSecondary} />
-            <Text style={styles.infoValue}>{student.parent.email}</Text>
+            <Text style={styles.infoValue}>{firstParent?.email ?? '—'}</Text>
           </View>
           <View style={styles.infoRow}>
             <MaterialCommunityIcons name="phone-outline" size={16} color={colors.textSecondary} />
-            <Text style={styles.infoValue}>{student.parent.phone}</Text>
+            <Text style={styles.infoValue}>{firstParent?.phone ?? '—'}</Text>
           </View>
         </View>
 
@@ -168,45 +189,30 @@ export function StudentProfileContent() {
           <View style={styles.metricsRow}>
             <View style={styles.metric}>
               <Text style={styles.metricLabel}>Overall GPA</Text>
-              <Text style={styles.metricValue}>{student.performance.overallGPA}</Text>
+              <Text style={styles.metricValue}>{performance.overallGpa ?? '—'}</Text>
             </View>
             <View style={styles.metric}>
               <Text style={styles.metricLabel}>Attendance</Text>
-              <Text style={styles.metricValue}>{student.performance.attendance}%</Text>
+              <Text style={styles.metricValue}>{performance.attendancePercent != null ? `${performance.attendancePercent}%` : '—'}</Text>
             </View>
             <View style={styles.metric}>
               <Text style={styles.metricLabel}>Behavior</Text>
-              <Text style={styles.metricValue}>{student.performance.behaviorScore}/5</Text>
+              <Text style={styles.metricValue}>{performance.behaviorScore != null ? `${performance.behaviorScore}/5` : '—'}</Text>
             </View>
           </View>
-          <Text style={styles.termLabel}>{student.performance.term}</Text>
+          <Text style={styles.termLabel}>{performance.termLabel || ''}</Text>
         </View>
 
         {/* Courses / Classes */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <MaterialCommunityIcons name="book-open-variant" size={20} color={colors.primary} />
-            <Text style={styles.cardTitle}>Courses & Classes</Text>
-          </View>
-          {student.courses.map((course, i) => (
-            <View key={i} style={styles.courseRow}>
-              <View style={styles.courseInfo}>
-                <Text style={styles.courseSubject}>{course.subject}</Text>
-                <Text style={styles.courseTeacher}>{course.teacher} • Room {course.room}</Text>
-              </View>
-              <View style={styles.courseGrade}>
-                <Text style={styles.gradeText}>{course.grade}</Text>
-                <Text style={styles.gpaText}>GPA: {course.gpa}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
+        {/* Reserved for future StudentCourse model; omitted for now to avoid static data. */}
       </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
+  loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.gutter },
+  errorText: { ...typography.bodySmall, color: colors.danger, marginBottom: 12, textAlign: 'center' },
   scroll: { flex: 1 },
   scrollContent: { padding: spacing.gutter, paddingBottom: 48 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, gap: 16 },

@@ -4,11 +4,31 @@ import { useNavigation } from '../../contexts/NavigationContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Logo } from '../landing/Logo';
 import { colors } from '../../theme/colors';
+import { useEffect, useState } from 'react';
+import { fetchUnreadCount } from '../../api/notifications';
 
 export function DashboardTopNav({ onMenuPress }) {
   const { goTo } = useNavigation();
   const { user } = useAuth();
   const displayName = user?.fullName?.split(' ')[0] || 'Admin';
+  const [unread, setUnread] = useState(0);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function load() {
+      try {
+        const data = await fetchUnreadCount();
+        if (!isMounted) return;
+        setUnread(data.unread ?? 0);
+      } catch {
+        if (isMounted) setUnread(0);
+      }
+    }
+    load();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <View style={styles.topNav}>
@@ -31,9 +51,9 @@ export function DashboardTopNav({ onMenuPress }) {
         />
       </View>
       <View style={styles.right}>
-        <Pressable style={styles.iconBtn}>
+        <Pressable style={styles.iconBtn} onPress={() => goTo('notifications')}>
           <MaterialCommunityIcons name="bell-outline" size={20} color={colors.textPrimary} />
-          <View style={styles.badge} />
+          {unread > 0 && <View style={styles.badge} />}
         </Pressable>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>{displayName.charAt(0)}</Text>

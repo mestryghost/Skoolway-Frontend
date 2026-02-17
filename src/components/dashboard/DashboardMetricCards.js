@@ -1,28 +1,75 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, ActivityIndicator } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
+import { useEffect, useState } from 'react';
+import { fetchDashboardSummary } from '../../api/dashboard';
 
-const METRICS = [
-  { label: 'Total Students', value: '1,284', trend: '+4.2%', up: true, icon: 'account-group', iconColor: colors.primary },
-  { label: 'Teachers', value: '86', trend: '+1.5%', up: true, icon: 'school', iconColor: colors.primary },
-  { label: 'Avg. Attendance', value: '94.2%', trend: '-0.8%', up: false, icon: 'clock-outline', iconColor: colors.textSecondary },
-  { label: 'Transport Fleet', value: '12 Units', trend: 'Stable', up: null, icon: 'bus', iconColor: colors.primary },
+const METRIC_CONFIG = [
+  { key: 'totalStudents', label: 'Total Students', icon: 'account-group', color: colors.primary },
+  { key: 'totalTeachers', label: 'Teachers', icon: 'school', color: colors.primary },
+  { key: 'avgAttendance', label: 'Avg. Attendance', icon: 'clock-outline', color: colors.textSecondary },
+  { key: 'transportFleet', label: 'Transport Fleet', icon: 'bus', color: colors.primary },
 ];
 
 export function DashboardMetricCards() {
+  const [summary, setSummary] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function load() {
+      try {
+        setLoading(true);
+        const data = await fetchDashboardSummary();
+        if (!isMounted) return;
+        setSummary(data);
+      } catch {
+        if (isMounted) setSummary(null);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+    load();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const avgAttendance =
+    summary && summary.totalStudents > 0
+      ? `${Math.round(((summary.activeStudents ?? 0) / summary.totalStudents) * 1000) / 10}%`
+      : '—';
+
   return (
     <View style={styles.wrapper}>
-      {METRICS.map((m) => (
-        <View key={m.label} style={styles.card}>
-          <MaterialCommunityIcons name={m.icon} size={24} color={m.iconColor} style={styles.icon} />
-          <Text style={styles.value}>{m.value}</Text>
-          <Text style={styles.label}>{m.label}</Text>
-          <Text style={[styles.trend, m.up === true && styles.trendUp, m.up === false && styles.trendDown]}>
-            {m.trend}
-          </Text>
-        </View>
-      ))}
+      {METRIC_CONFIG.map((m) => {
+        let value = '—';
+        let trend = '';
+        let up = null;
+
+        if (!loading && summary) {
+          if (m.key === 'totalStudents') value = String(summary.totalStudents ?? 0);
+          if (m.key === 'totalTeachers') value = String(summary.totalTeachers ?? 0);
+          if (m.key === 'avgAttendance') value = avgAttendance;
+          if (m.key === 'transportFleet') value = '—'; // backend not wired yet
+        }
+
+        return (
+          <View key={m.label} style={styles.card}>
+            <MaterialCommunityIcons name={m.icon} size={24} color={m.color} style={styles.icon} />
+            {loading && !summary ? (
+              <View style={styles.skeletonBar} />
+            ) : (
+              <>
+                <Text style={styles.value}>{value}</Text>
+                <Text style={styles.label}>{m.label}</Text>
+                <Text style={styles.trend}>{trend}</Text>
+              </>
+            )}
+          </View>
+        );
+      })}
     </View>
   );
 }
@@ -49,4 +96,5 @@ const styles = StyleSheet.create({
   trend: { fontSize: 12, color: colors.textSecondary },
   trendUp: { color: colors.success },
   trendDown: { color: colors.danger },
+  skeletonBar: { height: 14, borderRadius: 6, backgroundColor: colors.inputBackground, marginBottom: 6, width: '60%' },
 });

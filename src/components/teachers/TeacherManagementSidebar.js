@@ -3,57 +3,39 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { spacing, radii } from '../../theme/spacing';
-
-const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-const WORKLOAD_HEIGHTS = [50, 65, 80, 70, 55];
-
-const INSIGHTS = [
-  { icon: 'clock-outline', value: '98.4%', label: 'Teacher Attendance' },
-  { icon: 'clock-outline', value: '02', label: 'Vacant Positions' },
-  { icon: 'account-group', value: '05', label: 'Substitutes Active' },
-];
-
-const RECENT_ACTIVITY = [
-  { text: 'Assigned Marcus Thorne to 10-A', meta: 'Admin • 10m ago', icon: 'plus' },
-  { text: 'Updated Syllabus for 12-A', meta: 'Sarah J. • 1h ago', icon: 'clock-outline' },
-  { text: 'Generated Monthly Payroll', meta: 'System • 3h ago', icon: 'clock-outline' },
-];
+import { useEffect, useState } from 'react';
+import { fetchRecentNotifications } from '../../api/notifications';
 
 export function TeacherManagementSidebar() {
+  const [activity, setActivity] = useState([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function load() {
+      try {
+        const data = await fetchRecentNotifications({ category: 'Teachers', limit: 3 });
+        if (!isMounted) return;
+        setActivity(data.items || []);
+      } catch {
+        if (isMounted) setActivity([]);
+      }
+    }
+    load();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Staff Workload</Text>
-        <Text style={styles.cardSubtitle}>Average weekly teaching hours</Text>
-        <View style={styles.chartContainer}>
-          {WEEKDAYS.map((day, idx) => (
-            <View key={day} style={styles.chartBarWrapper}>
-              <View style={[styles.chartBar, { height: WORKLOAD_HEIGHTS[idx] }]} />
-              <Text style={styles.chartLabel}>{day}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Quick Insights</Text>
-        {INSIGHTS.map((insight) => (
-          <View key={insight.label} style={styles.insightCard}>
-            <MaterialCommunityIcons name={insight.icon} size={20} color={colors.primary} />
-            <Text style={styles.insightValue}>{insight.value}</Text>
-            <Text style={styles.insightLabel}>{insight.label}</Text>
-          </View>
-        ))}
-      </View>
-
-      <View style={styles.card}>
         <Text style={styles.cardTitle}>Recent Activity</Text>
-        {RECENT_ACTIVITY.map((item, idx) => (
-          <View key={idx} style={styles.activityItem}>
-            <MaterialCommunityIcons name={item.icon} size={18} color={colors.primary} style={styles.activityIcon} />
+        {activity.map((n) => (
+          <View key={n.id} style={styles.activityItem}>
+            <MaterialCommunityIcons name="clock-outline" size={18} color={colors.primary} style={styles.activityIcon} />
             <View style={styles.activityContent}>
-              <Text style={styles.activityText}>{item.text}</Text>
-              <Text style={styles.activityMeta}>{item.meta}</Text>
+              <Text style={styles.activityText}>{n.title}</Text>
+              <Text style={styles.activityMeta}>{new Date(n.createdAt).toLocaleString()}</Text>
             </View>
           </View>
         ))}

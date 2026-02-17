@@ -3,17 +3,32 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { spacing, radii } from '../../theme/spacing';
-
-const LIVE_FEED_ITEMS = [
-  { name: 'Sarah J.', action: 'Updated emergency contact', time: '2 MINS AGO' },
-  { name: 'Michael C.', action: 'Viewed report card', time: '5 MINS AGO' },
-  { name: 'Elena R.', action: 'Responded to message', time: '12 MINS AGO' },
-];
+import { useEffect, useState } from 'react';
+import { fetchRecentNotifications } from '../../api/notifications';
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const ACTIVITY_HEIGHTS = [40, 55, 75, 60, 50, 35, 45]; // Heights for bar chart
 
 export function ParentDirectorySidebar() {
+  const [feed, setFeed] = useState([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function load() {
+      try {
+        const data = await fetchRecentNotifications({ category: 'Parents', limit: 3 });
+        if (!isMounted) return;
+        setFeed(data.items || []);
+      } catch {
+        if (isMounted) setFeed([]);
+      }
+    }
+    load();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
@@ -51,14 +66,14 @@ export function ParentDirectorySidebar() {
           <Text style={styles.cardTitle}>Live Feed</Text>
           <MaterialCommunityIcons name="chart-line-variant" size={18} color={colors.textSecondary} />
         </View>
-        {LIVE_FEED_ITEMS.map((item, idx) => (
-          <View key={idx} style={styles.feedItem}>
+        {feed.map((n) => (
+          <View key={n.id} style={styles.feedItem}>
             <MaterialCommunityIcons name="clock-outline" size={16} color={colors.textSecondary} style={styles.feedIcon} />
             <View style={styles.feedContent}>
               <Text style={styles.feedText}>
-                <Text style={styles.feedName}>{item.name}</Text> {item.action}
+                <Text style={styles.feedName}>{n.title}</Text>
               </Text>
-              <Text style={styles.feedTime}>{item.time}</Text>
+              <Text style={styles.feedTime}>{new Date(n.createdAt).toLocaleString()}</Text>
             </View>
           </View>
         ))}

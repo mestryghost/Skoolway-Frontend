@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '../../contexts/NavigationContext';
@@ -8,9 +8,9 @@ import { typography } from '../../theme/typography';
 import { AddStudentModal } from './AddStudentModal';
 import { ImportCsvModal } from './ImportCsvModal';
 import { Breadcrumb } from '../common/Breadcrumb';
+import { fetchStudents } from '../../api/students';
 
 const BREADCRUMB_SEGMENTS = [{ label: 'Dashboard', screen: 'dashboard' }, { label: 'Students' }];
-const TOTAL_RESULTS = 152;
 const FILTERS = [
   { key: 'all', label: 'all' },
   { key: 'active', label: 'active' },
@@ -18,21 +18,14 @@ const FILTERS = [
   { key: 'graduated', label: 'graduated' },
 ];
 
-const PLACEHOLDER_STUDENTS = [
-  { id: 1, name: 'Aiden Montgomery', grade: 'Grade 10', section: 'Sec A', roll: '1024', status: 'ACTIVE', parent: 'Sarah Montgomery', email: 'aiden.m@school.edu', hasPhone: true },
-  { id: 2, name: 'Sophia Chen', grade: 'Grade 9', section: 'Sec B', roll: '1025', status: 'ACTIVE', parent: 'Michael Chen', email: 'sophia.c@school.edu', hasPhone: false },
-  { id: 3, name: 'Marcus Johnson', grade: 'Grade 11', section: 'Sec A', roll: '1026', status: 'ON-LEAVE', parent: 'James Johnson', email: 'marcus.j@school.edu', hasPhone: true },
-  { id: 4, name: 'Isabella Rossi', grade: 'Grade 10', section: 'Sec B', roll: '1027', status: 'ACTIVE', parent: 'Elena Rossi', email: 'isabella.r@school.edu', hasPhone: false },
-  { id: 5, name: 'Liam O\'Connell', grade: 'Grade 8', section: 'Sec A', roll: '1028', status: 'INACTIVE', parent: 'Patrick O\'Connell', email: 'liam.o@school.edu', hasPhone: true },
-];
-
 function StatusPill({ status }) {
-  const isActive = status === 'ACTIVE';
-  const isOnLeave = status === 'ON-LEAVE';
+  const normalized = status || '';
+  const isActive = normalized === 'ACTIVE';
+  const isOnLeave = normalized === 'ON-LEAVE' || normalized === 'ONLEAVE';
   const bg = isActive ? colors.primary : isOnLeave ? colors.statusOnLeave : colors.danger;
   return (
     <View style={[styles.statusPill, { backgroundColor: bg }]}>
-      <Text style={styles.statusText}>{status}</Text>
+      <Text style={styles.statusText}>{isOnLeave ? 'ON-LEAVE' : normalized}</Text>
     </View>
   );
 }
@@ -41,10 +34,41 @@ export function StudentDirectoryContent() {
   const { goTo } = useNavigation();
   const [filter, setFilter] = useState('all');
   const [page, setPage] = useState(1);
+  const [students, setStudents] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [addStudentOpen, setAddStudentOpen] = useState(false);
   const [importCsvOpen, setImportCsvOpen] = useState(false);
   const perPage = 5;
-  const totalPages = Math.ceil(TOTAL_RESULTS / perPage);
+  const totalPages = Math.max(1, Math.ceil(total / perPage));
+
+  useEffect(() => {
+    let isMounted = true;
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const statusParam =
+          filter === 'active' ? 'Active' :
+          filter === 'on-leave' ? 'OnLeave' :
+          filter === 'graduated' ? 'Graduated' :
+          undefined;
+        const data = await fetchStudents({ page, pageSize: perPage, status: statusParam });
+        if (!isMounted) return;
+        setStudents(data.items || []);
+        setTotal(data.total || 0);
+      } catch (e) {
+        if (isMounted) setError(e.message || 'Failed to load students');
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+    load();
+    return () => {
+      isMounted = false;
+    };
+  }, [page, filter]);
 
   const handleViewProfile = (studentId) => {
     goTo('student-profile', { studentId });
@@ -87,7 +111,7 @@ export function StudentDirectoryContent() {
         <Pressable style={styles.filterIconBtn}>
           <MaterialCommunityIcons name="filter-outline" size={20} color={colors.textSecondary} />
         </Pressable>
-        <Text style={styles.resultsCount}>{TOTAL_RESULTS} Total Results</Text>
+        <Text style={styles.resultsCount}>{total} Total Results</Text>
       </View>
 
       <View style={styles.table}>
@@ -100,7 +124,37 @@ export function StudentDirectoryContent() {
           <Text style={[styles.headerCell, styles.colContact]}>Contact</Text>
           <View style={styles.colActions} />
         </View>
-        {PLACEHOLDER_STUDENTS.map((s) => (
+        {loading && (
+          <>
+            {[0, 1, 2, 3, 4].map((i) => (
+              <View key={i} style={styles.tableRow}>
+                <View style={styles.colCheck}>
+                  <View style={styles.checkbox} />
+                </View>
+                <View style={styles.colAvatar}>
+                  <View style={[styles.avatar, styles.skeleton]} />
+                </View>
+                <View style={styles.colName}>
+                  <View style={[styles.skeletonBar, { width: '70%' }]} />
+                  <View style={[styles.skeletonBar, { width: '50%', marginTop: 4 }]} />
+                </View>
+                <View style={styles.colStatus}>
+                  <View style={[styles.statusPill, styles.skeleton]} />
+                </View>
+                <View style={styles.colParent}>
+                  <View style={[styles.skeletonBar, { width: '80%' }]} />
+                </View>
+                <View style={styles.colContact}>
+                  <View style={[styles.skeletonBar, { width: '80%' }]} />
+                </View>
+                <View style={styles.colActions}>
+                  <View style={[styles.viewProfileBtn, styles.skeleton]} />
+                </View>
+              </View>
+            ))}
+          </>
+        )}
+        {!loading && students.map((s) => (
           <View key={s.id} style={styles.tableRow}>
             <View style={styles.colCheck}>
               <View style={styles.checkbox} />
@@ -111,13 +165,13 @@ export function StudentDirectoryContent() {
             <View style={styles.colName}>
               <Text style={styles.studentName}>{s.name}</Text>
               <Text style={styles.studentMeta}>{s.grade} • {s.section}</Text>
-              <Text style={styles.studentMeta}>Roll #{s.roll}</Text>
+              {s.rollNumber && <Text style={styles.studentMeta}>Roll #{s.rollNumber}</Text>}
             </View>
             <View style={styles.colStatus}>
               <StatusPill status={s.status} />
             </View>
             <View style={styles.colParent}>
-              <Text style={styles.cellText}>{s.parent}</Text>
+              <Text style={styles.cellText}>{s.parentName ?? '-'}</Text>
               {s.hasPhone && <MaterialCommunityIcons name="phone-outline" size={14} color={colors.textSecondary} style={styles.inlineIcon} />}
             </View>
             <View style={styles.colContact}>
@@ -138,7 +192,7 @@ export function StudentDirectoryContent() {
 
       <View style={styles.pagination}>
         <Text style={styles.paginationInfo}>
-          Showing 1 to {perPage} of {TOTAL_RESULTS} students
+          Showing {(total === 0 ? 0 : (page - 1) * perPage + 1)} to {Math.min(page * perPage, total)} of {total} students
         </Text>
         <View style={styles.paginationControls}>
           <Pressable style={styles.pageBtn} onPress={() => setPage((p) => Math.max(1, p - 1))}>
@@ -220,6 +274,8 @@ const styles = StyleSheet.create({
   viewProfileBtn: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: radii.pill, borderWidth: 1, borderColor: colors.borderSubtle },
   viewProfileText: { fontSize: 12, color: colors.textPrimary },
   kebabBtn: { padding: 4 },
+  skeleton: { backgroundColor: colors.inputBackground },
+  skeletonBar: { height: 10, borderRadius: 4, backgroundColor: colors.inputBackground },
   pagination: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16 },
   paginationInfo: { ...typography.small, color: colors.textSecondary },
   paginationControls: { flexDirection: 'row', gap: 8 },

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '../../contexts/NavigationContext';
@@ -8,6 +8,7 @@ import { typography } from '../../theme/typography';
 import { AddClassModal } from './AddClassModal';
 import { AddTeacherModal } from './AddTeacherModal';
 import { Breadcrumb } from '../common/Breadcrumb';
+import { fetchTeachers } from '../../api/teachers';
 
 const BREADCRUMB_SEGMENTS = [{ label: 'Dashboard', screen: 'dashboard' }, { label: 'Teachers & Classrooms' }];
 const TABS = [
@@ -16,18 +17,11 @@ const TABS = [
   { key: 'timetables', label: 'Timetables' },
 ];
 
-const METRICS = [
-  { icon: 'account-group', value: '142', sub: '+3 this month', label: 'Total Teachers' },
-  { icon: 'calendar-month', value: '56', sub: '85% capacity', label: 'Active Classes' },
-  { icon: 'book-open-variant', value: '24', sub: '4 departments', label: 'Total Subjects' },
-  { icon: 'check-circle', value: '18', sub: 'All active', label: 'Support Staff' },
-];
-
-const TEACHERS = [
-  { id: 1, name: 'Dr. Sarah Jenkins', email: 's.jenkins@educonnect.com', subjects: ['Mathematics', 'Further Pure'], classes: 2, status: 'Active' },
-  { id: 2, name: 'Marcus Thorne', email: 'm.thorne@educonnect.com', subjects: ['Physics', 'Astronomy'], classes: 2, status: 'Active' },
-  { id: 3, name: 'Elena Rodriguez', email: 'e.rodriguez@educonnect.com', subjects: ['Spanish', 'Literature'], classes: 2, status: 'Active' },
-  { id: 4, name: 'Julian Vane', email: 'j.vane@educonnect.com', subjects: ['Computer Science'], classes: 2, status: 'On Leave' },
+const METRICS_PLACEHOLDER = [
+  { icon: 'account-group', label: 'Total Teachers' },
+  { icon: 'calendar-month', label: 'Active Classes' },
+  { icon: 'book-open-variant', label: 'Total Subjects' },
+  { icon: 'check-circle', label: 'Support Staff' },
 ];
 
 const CLASSROOMS = [
@@ -57,7 +51,7 @@ function TeacherCard({ teacher, onViewProfile }) {
       <Text style={styles.teacherName}>{teacher.name}</Text>
       <Text style={styles.teacherEmail}>{teacher.email}</Text>
       <View style={styles.subjectRow}>
-        {teacher.subjects.map((s) => (
+        {(teacher.subjects || []).map((s) => (
           <View key={s} style={styles.subjectPill}>
             <Text style={styles.subjectPillText}>{s}</Text>
           </View>
@@ -65,7 +59,7 @@ function TeacherCard({ teacher, onViewProfile }) {
       </View>
       <View style={styles.classesRow}>
         <MaterialCommunityIcons name="book-open-page-variant" size={16} color={colors.textSecondary} />
-        <Text style={styles.classesText}>{teacher.classes} Classes</Text>
+        <Text style={styles.classesText}>{teacher.classesCount ?? 0} Classes</Text>
       </View>
       <View style={styles.cardFooter}>
         <TeacherStatusPill status={teacher.status} />
@@ -103,6 +97,33 @@ export function TeacherManagementContent() {
   const [activeTab, setActiveTab] = useState('overview');
   const [addClassOpen, setAddClassOpen] = useState(false);
   const [addTeacherOpen, setAddTeacherOpen] = useState(false);
+  const [teachers, setTeachers] = useState([]);
+  const [teacherTotal, setTeacherTotal] = useState(0);
+  const [loadingTeachers, setLoadingTeachers] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function load() {
+      setLoadingTeachers(true);
+      try {
+        const data = await fetchTeachers({ page: 1, pageSize: 20 });
+        if (!isMounted) return;
+        setTeachers(data.items || []);
+        setTeacherTotal(data.total || 0);
+      } catch {
+        if (isMounted) {
+          setTeachers([]);
+          setTeacherTotal(0);
+        }
+      } finally {
+        if (isMounted) setLoadingTeachers(false);
+      }
+    }
+    load();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <>
@@ -135,11 +156,13 @@ export function TeacherManagementContent() {
       </View>
 
       <View style={styles.metricsRow}>
-        {METRICS.map((m) => (
+        {METRICS_PLACEHOLDER.map((m, index) => (
           <View key={m.label} style={styles.metricCard}>
             <MaterialCommunityIcons name={m.icon} size={24} color={colors.primary} style={styles.metricIcon} />
-            <Text style={styles.metricValue}>{m.value}</Text>
-            <Text style={styles.metricSub}>{m.sub}</Text>
+            <Text style={styles.metricValue}>
+              {m.label === 'Total Teachers' ? teacherTotal || '—' : '—'}
+            </Text>
+            <Text style={styles.metricSub}>{index === 0 && teacherTotal ? 'Loaded from API' : ''}</Text>
             <Text style={styles.metricLabel}>{m.label}</Text>
           </View>
         ))}
@@ -160,9 +183,20 @@ export function TeacherManagementContent() {
           </View>
         </View>
         <View style={styles.teacherGrid}>
-          {TEACHERS.map((t) => (
-            <TeacherCard key={t.id} teacher={t} onViewProfile={(id) => goTo('teacher-profile', { teacherId: id })} />
-          ))}
+          {loadingTeachers &&
+            [0, 1, 2].map((i) => (
+              <View key={i} style={styles.teacherCard}>
+                <View style={[styles.avatar, styles.skeleton]} />
+                <View style={[styles.skeletonBar, { width: '70%', marginBottom: 8 }]} />
+                <View style={[styles.skeletonBar, { width: '60%', marginBottom: 12 }]} />
+                <View style={[styles.skeletonBar, { width: '80%', marginBottom: 6 }]} />
+                <View style={[styles.skeletonBar, { width: '50%' }]} />
+              </View>
+            ))}
+          {!loadingTeachers &&
+            teachers.map((t) => (
+              <TeacherCard key={t.id} teacher={t} onViewProfile={(id) => goTo('teacher-profile', { teacherId: id })} />
+            ))}
         </View>
       </View>
 

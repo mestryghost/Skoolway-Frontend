@@ -18,6 +18,7 @@ const SCREEN_TO_PATH = {
   reports: '/reports',
   'student-profile': '/students/profile',
   'teacher-profile': '/teachers/profile',
+  notifications: '/notifications',
 };
 
 const PATH_TO_SCREEN = Object.fromEntries(

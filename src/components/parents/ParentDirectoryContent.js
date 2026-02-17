@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
@@ -6,83 +6,15 @@ import { spacing, radii } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { RegisterParentModal } from './RegisterParentModal';
 import { Breadcrumb } from '../common/Breadcrumb';
+import { fetchParents } from '../../api/parents';
 
 const BREADCRUMB_SEGMENTS = [{ label: 'Dashboard', screen: 'dashboard' }, { label: 'Parents' }];
-const TOTAL_PARENTS = 1240;
 const FILTERS = [
   { key: 'all', label: 'all' },
   { key: 'active', label: 'active' },
   { key: 'pending', label: 'pending' },
   { key: 'inactive', label: 'inactive' },
 ];
-
-const PLACEHOLDER_PARENTS = [
-  {
-    id: 1,
-    name: 'Sarah Jenkins',
-    role: 'Mother',
-    status: 'Active',
-    email: 'sarah.jenkins@email.com',
-    phone: '+1 (555) 123-4567',
-    students: [
-      { name: 'Leo Jenkins', grade: 'Grade 4-B' },
-      { name: 'Emma Jenkins', grade: 'Grade 2-A' },
-    ],
-  },
-  {
-    id: 2,
-    name: 'Elena Rodriguez',
-    role: 'Guardian',
-    status: 'Pending Verification',
-    email: 'elena.r@email.com',
-    phone: '+1 (555) 234-5678',
-    students: [{ name: 'Mia Rodriguez', grade: 'Grade 5-C' }],
-  },
-  {
-    id: 3,
-    name: 'Michael Chen',
-    role: 'Father',
-    status: 'Active',
-    email: 'michael.chen@email.com',
-    phone: '+1 (555) 345-6789',
-    students: [{ name: 'Sophia Chen', grade: 'Grade 9-B' }],
-  },
-  {
-    id: 4,
-    name: 'James Johnson',
-    role: 'Father',
-    status: 'Active',
-    email: 'james.j@email.com',
-    phone: '+1 (555) 456-7890',
-    students: [{ name: 'Marcus Johnson', grade: 'Grade 11-A' }],
-  },
-  {
-    id: 5,
-    name: 'Elena Rossi',
-    role: 'Mother',
-    status: 'Active',
-    email: 'elena.rossi@email.com',
-    phone: '+1 (555) 567-8901',
-    students: [{ name: 'Isabella Rossi', grade: 'Grade 10-B' }],
-  },
-  {
-    id: 6,
-    name: 'Patrick O\'Connell',
-    role: 'Father',
-    status: 'Active',
-    email: 'patrick.o@email.com',
-    phone: '+1 (555) 678-9012',
-    students: [{ name: 'Liam O\'Connell', grade: 'Grade 8-A' }],
-  },
-];
-
-function RolePill({ role }) {
-  return (
-    <View style={styles.rolePill}>
-      <Text style={styles.roleText}>{role}</Text>
-    </View>
-  );
-}
 
 function StatusPill({ status }) {
   const isActive = status === 'Active';
@@ -104,7 +36,11 @@ function ParentCard({ parent }) {
           <View style={styles.nameSection}>
             <Text style={styles.parentName}>{parent.name}</Text>
             <View style={styles.tagRow}>
-              <RolePill role={parent.role} />
+              {parent.relationship && (
+                <View style={styles.rolePill}>
+                  <Text style={styles.roleText}>{parent.relationship}</Text>
+                </View>
+              )}
               <StatusPill status={parent.status} />
             </View>
           </View>
@@ -127,13 +63,7 @@ function ParentCard({ parent }) {
 
       <View style={styles.linkedStudents}>
         <Text style={styles.linkedStudentsLabel}>LINKED STUDENTS</Text>
-        {parent.students.map((student, idx) => (
-          <View key={idx} style={styles.studentPill}>
-            <View style={styles.studentAvatar} />
-            <Text style={styles.studentName}>{student.name}</Text>
-            <Text style={styles.studentGrade}>{student.grade}</Text>
-          </View>
-        ))}
+        <Text style={styles.contactText}>{parent.linkedStudentsCount ?? 0} student(s)</Text>
       </View>
 
       <View style={styles.cardActions}>
@@ -156,7 +86,38 @@ export function ParentDirectoryContent() {
   const [searchQuery, setSearchQuery] = useState('');
   const [registerParentOpen, setRegisterParentOpen] = useState(false);
   const perPage = 6;
-  const totalPages = Math.ceil(TOTAL_PARENTS / perPage);
+  const [parents, setParents] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const totalPages = Math.max(1, Math.ceil(total / perPage));
+
+  useEffect(() => {
+    let isMounted = true;
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const statusParam =
+          filter === 'active' ? 'Active' :
+          filter === 'pending' ? 'Pending' :
+          filter === 'inactive' ? 'Inactive' :
+          undefined;
+        const data = await fetchParents({ page, pageSize: perPage, status: statusParam });
+        if (!isMounted) return;
+        setParents(data.items || []);
+        setTotal(data.total || 0);
+      } catch (e) {
+        if (isMounted) setError(e.message || 'Failed to load parents');
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+    load();
+    return () => {
+      isMounted = false;
+    };
+  }, [page, filter]);
 
   return (
     <>
@@ -207,14 +168,33 @@ export function ParentDirectoryContent() {
       </View>
 
       <View style={styles.grid}>
-        {PLACEHOLDER_PARENTS.map((parent) => (
-          <ParentCard key={parent.id} parent={parent} />
-        ))}
+        {loading &&
+          [0, 1, 2, 3].map((i) => (
+            <View key={i} style={styles.parentCard}>
+              <View style={styles.cardHeader}>
+                <View style={styles.cardHeaderLeft}>
+                  <View style={[styles.avatar, styles.skeleton]} />
+                  <View style={styles.nameSection}>
+                    <View style={[styles.skeletonBar, { width: '60%' }]} />
+                    <View style={[styles.skeletonBar, { width: '40%', marginTop: 6 }]} />
+                  </View>
+                </View>
+              </View>
+              <View style={styles.contactSection}>
+                <View style={[styles.skeletonBar, { width: '80%', marginBottom: 8 }]} />
+                <View style={[styles.skeletonBar, { width: '50%' }]} />
+              </View>
+            </View>
+          ))}
+        {!loading &&
+          parents
+            .filter((p) => !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase()))
+            .map((parent) => <ParentCard key={parent.id} parent={parent} />)}
       </View>
 
       <View style={styles.pagination}>
         <Text style={styles.paginationInfo}>
-          Showing {perPage} of {TOTAL_PARENTS} parents
+          Showing {(total === 0 ? 0 : (page - 1) * perPage + 1)} to {Math.min(page * perPage, total)} of {total} parents
         </Text>
         <View style={styles.paginationControls}>
           <Pressable style={styles.pageBtn} onPress={() => setPage((p) => Math.max(1, p - 1))}>
@@ -352,4 +332,6 @@ const styles = StyleSheet.create({
   pageBtnActive: { backgroundColor: colors.primary },
   pageBtnText: { ...typography.small, color: colors.textPrimary },
   pageBtnTextActive: { color: colors.white },
+  skeleton: { backgroundColor: colors.inputBackground },
+  skeletonBar: { height: 10, borderRadius: 4, backgroundColor: colors.inputBackground },
 });

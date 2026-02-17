@@ -1,26 +1,49 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
-
-const ALERTS = [
-  { id: 1, title: 'Morning Assembly Success', time: '2h ago', body: 'Parent participation exceeded 85%.' },
-  { id: 2, title: 'Transport Alert: Route 4', time: '4h ago', body: 'Bus delay reported; parents notified.' },
-  { id: 3, title: 'New Student Enrollment', time: '6h ago', body: 'Profile completed for Grade 3.' },
-];
+import { useEffect, useState } from 'react';
+import { fetchRecentNotifications } from '../../api/notifications';
 
 export function RecentAlerts() {
+  const [alerts, setAlerts] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function load() {
+      setLoading(true);
+      try {
+        const data = await fetchRecentNotifications({ limit: 3 });
+        if (!isMounted) return;
+        setAlerts(data.items || []);
+      } catch {
+        if (isMounted) setAlerts([]);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+    load();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const newCount = alerts.filter((a) => !a.isRead).length;
+
   return (
     <View style={styles.card}>
       <View style={styles.header}>
         <Text style={styles.title}>Recent Alerts</Text>
-        <View style={styles.newBadge}>
-          <Text style={styles.newBadgeText}>2 NEW</Text>
-        </View>
+        {newCount > 0 && (
+          <View style={styles.newBadge}>
+            <Text style={styles.newBadgeText}>{newCount} NEW</Text>
+          </View>
+        )}
       </View>
-      {ALERTS.map((a) => (
+      {alerts.map((a) => (
         <View key={a.id} style={styles.row}>
           <Text style={styles.alertTitle}>{a.title}</Text>
-          <Text style={styles.time}>{a.time}</Text>
+          <Text style={styles.time}>{new Date(a.createdAt).toLocaleString()}</Text>
           <Text style={styles.body}>{a.body}</Text>
         </View>
       ))}

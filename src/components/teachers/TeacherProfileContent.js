@@ -1,47 +1,12 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '../../contexts/NavigationContext';
 import { Breadcrumb } from '../common/Breadcrumb';
 import { colors } from '../../theme/colors';
 import { spacing, radii } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-
-// Placeholder data - in real app, fetch by teacherId from navigation context
-const PLACEHOLDER_TEACHER = {
-  id: 1,
-  name: 'Dr. Sarah Jenkins',
-  title: 'Head of Mathematics Department',
-  email: 's.jenkins@educonnect.com',
-  phone: '+1 (555) 234-5678',
-  department: 'Mathematics',
-  hireDate: '2018-09-01',
-  status: 'Active',
-  subjects: ['Mathematics', 'Further Pure Mathematics', 'Calculus'],
-  classes: [
-    { id: 1, name: 'Grade 12-A', subject: 'Calculus', room: 'C101', studentCount: 28, capacity: 30, schedule: 'Mon P1, Wed P3, Fri P2' },
-    { id: 2, name: 'Grade 11-B', subject: 'Mathematics', room: 'C102', studentCount: 24, capacity: 30, schedule: 'Tue P2, Thu P1' },
-  ],
-  students: [
-    { id: 1, name: 'Aiden Montgomery', grade: 'Grade 12-A', email: 'aiden.m@school.edu', performance: 'A' },
-    { id: 2, name: 'Sophia Chen', grade: 'Grade 12-A', email: 'sophia.c@school.edu', performance: 'A-' },
-    { id: 3, name: 'Marcus Johnson', grade: 'Grade 11-B', email: 'marcus.j@school.edu', performance: 'B+' },
-    { id: 4, name: 'Isabella Rossi', grade: 'Grade 12-A', email: 'isabella.r@school.edu', performance: 'A' },
-    { id: 5, name: 'Liam O\'Connell', grade: 'Grade 11-B', email: 'liam.o@school.edu', performance: 'B' },
-  ],
-  performance: {
-    averageClassSize: 26,
-    totalStudents: 52,
-    averageGrade: 'A-',
-    attendanceRate: 94,
-  },
-  timetable: [
-    { day: 'Monday', periods: ['P1: Grade 12-A (Calculus)', 'P3: Grade 12-A (Calculus)'] },
-    { day: 'Tuesday', periods: ['P2: Grade 11-B (Mathematics)'] },
-    { day: 'Wednesday', periods: ['P3: Grade 12-A (Calculus)'] },
-    { day: 'Thursday', periods: ['P1: Grade 11-B (Mathematics)'] },
-    { day: 'Friday', periods: ['P2: Grade 12-A (Calculus)'] },
-  ],
-};
+import { useEffect, useState } from 'react';
+import { fetchTeacherProfile } from '../../api/teachers';
 
 function StatusPill({ status }) {
   const isActive = status === 'Active';
@@ -55,7 +20,55 @@ function StatusPill({ status }) {
 
 export function TeacherProfileContent() {
   const { goTo, teacherId } = useNavigation();
-  const teacher = PLACEHOLDER_TEACHER; // In real app: fetch by teacherId
+  const [teacher, setTeacher] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function load() {
+      if (!teacherId) {
+        setError('No teacher selected.');
+        setLoading(false);
+        return;
+      }
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await fetchTeacherProfile(teacherId);
+        if (!isMounted) return;
+        setTeacher(data);
+      } catch (e) {
+        if (isMounted) setError(e.message || 'Failed to load teacher');
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+    load();
+    return () => {
+      isMounted = false;
+    };
+  }, [teacherId]);
+
+  if (loading) {
+    return (
+      <View style={styles.loadingWrap}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
+  if (error || !teacher) {
+    return (
+      <View style={styles.loadingWrap}>
+        <Text style={styles.errorText}>{error || 'Teacher not found.'}</Text>
+        <Pressable style={styles.backBtn} onPress={() => goTo('teachers')}>
+          <MaterialCommunityIcons name="arrow-left" size={20} color={colors.textPrimary} />
+          <Text style={styles.backBtnText}>Back</Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -69,9 +82,14 @@ export function TeacherProfileContent() {
               <Text style={styles.name}>{teacher.name}</Text>
               <StatusPill status={teacher.status} />
             </View>
-            <Text style={styles.title}>{teacher.title}</Text>
-            <Text style={styles.meta}>{teacher.department} Department</Text>
-            <Text style={styles.meta}>Hired: {new Date(teacher.hireDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</Text>
+            <Text style={styles.title}>{teacher.title || ''}</Text>
+            <Text style={styles.meta}>{teacher.department ? `${teacher.department} Department` : ''}</Text>
+            <Text style={styles.meta}>
+              Hired:{' '}
+              {teacher.createdAt
+                ? new Date(teacher.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+                : '—'}
+            </Text>
           </View>
         </View>
         <Pressable style={styles.backBtn} onPress={() => goTo('teachers')}>
@@ -97,7 +115,7 @@ export function TeacherProfileContent() {
           </View>
           <View style={styles.infoRow}>
             <MaterialCommunityIcons name="office-building" size={18} color={colors.textSecondary} />
-            <Text style={styles.infoValue}>{teacher.department} Department</Text>
+            <Text style={styles.infoValue}>{teacher.department ? `${teacher.department} Department` : '—'}</Text>
           </View>
         </View>
 
@@ -107,24 +125,7 @@ export function TeacherProfileContent() {
             <MaterialCommunityIcons name="chart-line" size={20} color={colors.primary} />
             <Text style={styles.cardTitle}>Performance Overview</Text>
           </View>
-          <View style={styles.metricsRow}>
-            <View style={styles.metric}>
-              <Text style={styles.metricLabel}>Total Students</Text>
-              <Text style={styles.metricValue}>{teacher.performance.totalStudents}</Text>
-            </View>
-            <View style={styles.metric}>
-              <Text style={styles.metricLabel}>Avg. Class Size</Text>
-              <Text style={styles.metricValue}>{teacher.performance.averageClassSize}</Text>
-            </View>
-            <View style={styles.metric}>
-              <Text style={styles.metricLabel}>Avg. Grade</Text>
-              <Text style={styles.metricValue}>{teacher.performance.averageGrade}</Text>
-            </View>
-            <View style={styles.metric}>
-              <Text style={styles.metricLabel}>Attendance</Text>
-              <Text style={styles.metricValue}>{teacher.performance.attendanceRate}%</Text>
-            </View>
-          </View>
+          <Text style={styles.meta}>Detailed performance metrics will be added when analytics backend is ready.</Text>
         </View>
 
         {/* Subjects Taught */}
@@ -133,13 +134,7 @@ export function TeacherProfileContent() {
             <MaterialCommunityIcons name="book-open-variant" size={20} color={colors.primary} />
             <Text style={styles.cardTitle}>Subjects Taught</Text>
           </View>
-          <View style={styles.subjectList}>
-            {teacher.subjects.map((subject, i) => (
-              <View key={i} style={styles.subjectPill}>
-                <Text style={styles.subjectPillText}>{subject}</Text>
-              </View>
-            ))}
-          </View>
+          <Text style={styles.meta}>Subject assignments will be populated once SubjectTeacher mappings are implemented.</Text>
         </View>
 
         {/* Classes Assigned */}
@@ -148,28 +143,7 @@ export function TeacherProfileContent() {
             <MaterialCommunityIcons name="account-group" size={20} color={colors.primary} />
             <Text style={styles.cardTitle}>Classes Assigned</Text>
           </View>
-          {teacher.classes.map((cls) => (
-            <View key={cls.id} style={styles.classCard}>
-              <View style={styles.classHeader}>
-                <Text style={styles.className}>{cls.name}</Text>
-                <Text style={styles.classSubject}>{cls.subject}</Text>
-              </View>
-              <View style={styles.classDetails}>
-                <View style={styles.classDetailItem}>
-                  <MaterialCommunityIcons name="door" size={16} color={colors.textSecondary} />
-                  <Text style={styles.classDetailText}>Room {cls.room}</Text>
-                </View>
-                <View style={styles.classDetailItem}>
-                  <MaterialCommunityIcons name="account-group" size={16} color={colors.textSecondary} />
-                  <Text style={styles.classDetailText}>{cls.studentCount}/{cls.capacity} students</Text>
-                </View>
-                <View style={styles.classDetailItem}>
-                  <MaterialCommunityIcons name="calendar-clock" size={16} color={colors.textSecondary} />
-                  <Text style={styles.classDetailText}>{cls.schedule}</Text>
-                </View>
-              </View>
-            </View>
-          ))}
+          <Text style={styles.meta}>Class assignments will be driven by TeacherClass relationships.</Text>
         </View>
 
         {/* Weekly Timetable */}
@@ -178,16 +152,7 @@ export function TeacherProfileContent() {
             <MaterialCommunityIcons name="calendar-month" size={20} color={colors.primary} />
             <Text style={styles.cardTitle}>Weekly Timetable</Text>
           </View>
-          {teacher.timetable.map((day, i) => (
-            <View key={i} style={styles.timetableRow}>
-              <Text style={styles.timetableDay}>{day.day}</Text>
-              <View style={styles.timetablePeriods}>
-                {day.periods.map((period, j) => (
-                  <Text key={j} style={styles.timetablePeriod}>{period}</Text>
-                ))}
-              </View>
-            </View>
-          ))}
+          <Text style={styles.meta}>Timetable will be composed from Manage Schedule data per teacher.</Text>
           <Pressable style={styles.viewFullTimetableBtn} onPress={() => goTo('manage-schedule')}>
             <Text style={styles.viewFullTimetableText}>View Full Timetable</Text>
             <MaterialCommunityIcons name="open-in-new" size={16} color={colors.primary} />
@@ -198,19 +163,9 @@ export function TeacherProfileContent() {
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <MaterialCommunityIcons name="school" size={20} color={colors.primary} />
-            <Text style={styles.cardTitle}>Students ({teacher.students.length})</Text>
+            <Text style={styles.cardTitle}>Students</Text>
           </View>
-          {teacher.students.map((student) => (
-            <View key={student.id} style={styles.studentRow}>
-              <View style={styles.studentInfo}>
-                <Text style={styles.studentName}>{student.name}</Text>
-                <Text style={styles.studentMeta}>{student.grade} • {student.email}</Text>
-              </View>
-              <View style={styles.studentGrade}>
-                <Text style={styles.gradeText}>{student.performance}</Text>
-              </View>
-            </View>
-          ))}
+          <Text style={styles.meta}>Student rosters per teacher will be populated from class enrollments.</Text>
         </View>
       </View>
     </ScrollView>
@@ -218,6 +173,8 @@ export function TeacherProfileContent() {
 }
 
 const styles = StyleSheet.create({
+  loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.gutter },
+  errorText: { ...typography.bodySmall, color: colors.danger, marginBottom: 12, textAlign: 'center' },
   scroll: { flex: 1 },
   scrollContent: { padding: spacing.gutter, paddingBottom: 48 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, gap: 16 },

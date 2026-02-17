@@ -1,15 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { spacing, radii } from '../../theme/spacing';
-
-const RECENT_ITEMS = [
-  { name: 'Sarah Jenkins', grade: 'Grade 8-B', time: '2 hours ago' },
-  { name: 'Sarah Jenkins', grade: 'Grade 8-B', time: '2 hours ago' },
-  { name: 'Sarah Jenkins', grade: 'Grade 8-B', time: '2 hours ago' },
-];
+import { fetchRecentNotifications } from '../../api/notifications';
 
 const ADMIN_TOOLS = ['Bulk Promotion Wizard', 'House Allocation', 'Document Generator'];
 const REPORTS = ['Attendance Report', 'Enrollment Report'];
@@ -17,6 +12,24 @@ const REPORTS = ['Attendance Report', 'Enrollment Report'];
 export function StudentDirectorySidebar() {
   const [adminOpen, setAdminOpen] = useState(true);
   const [reportsOpen, setReportsOpen] = useState(false);
+  const [recent, setRecent] = useState([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function load() {
+      try {
+        const data = await fetchRecentNotifications({ category: 'Students', limit: 3 });
+        if (!isMounted) return;
+        setRecent(data.items || []);
+      } catch {
+        if (isMounted) setRecent([]);
+      }
+    }
+    load();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -70,13 +83,13 @@ export function StudentDirectorySidebar() {
           <MaterialCommunityIcons name="clock-outline" size={16} color={colors.textSecondary} />
           <Text style={styles.recentTitle}>RECENT ENROLLMENTS</Text>
         </View>
-        {RECENT_ITEMS.map((item, i) => (
-          <View key={i} style={styles.recentItem}>
+        {recent.map((n) => (
+          <View key={n.id} style={styles.recentItem}>
             <MaterialCommunityIcons name="check-circle" size={18} color={colors.primary} style={styles.recentIcon} />
             <View>
-              <Text style={styles.recentLabel}>New Student Registered</Text>
-              <Text style={styles.recentDetail}>{item.name} joined {item.grade}</Text>
-              <Text style={styles.recentTime}>{item.time}</Text>
+              <Text style={styles.recentLabel}>{n.title}</Text>
+              <Text style={styles.recentDetail}>{n.body}</Text>
+              <Text style={styles.recentTime}>{new Date(n.createdAt).toLocaleString()}</Text>
             </View>
           </View>
         ))}

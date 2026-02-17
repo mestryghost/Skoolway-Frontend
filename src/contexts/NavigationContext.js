@@ -17,6 +17,7 @@ const SCREEN_TO_PATH = {
   'manage-schedule': '/schedule',
   reports: '/reports',
   'student-profile': '/students/profile',
+  'teacher-profile': '/teachers/profile',
 };
 
 const PATH_TO_SCREEN = Object.fromEntries(
@@ -33,6 +34,7 @@ export function NavigationProvider({ children }) {
   const [screen, setScreen] = useState(() => getScreenFromPath());
   const [onboardingTenantId, setOnboardingTenantId] = useState(null);
   const [studentId, setStudentId] = useState(null);
+  const [teacherId, setTeacherId] = useState(null);
 
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;
@@ -50,6 +52,7 @@ export function NavigationProvider({ children }) {
     setScreen(nextScreen);
     if (options.tenantId !== undefined) setOnboardingTenantId(options.tenantId);
     if (options.studentId !== undefined) setStudentId(options.studentId);
+    if (options.teacherId !== undefined) setTeacherId(options.teacherId);
 
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       const path = SCREEN_TO_PATH[nextScreen] || '/';
@@ -58,7 +61,7 @@ export function NavigationProvider({ children }) {
   };
 
   return (
-    <NavigationContext.Provider value={{ screen, goTo, onboardingTenantId, setOnboardingTenantId, studentId, setStudentId }}>
+    <NavigationContext.Provider value={{ screen, goTo, onboardingTenantId, setOnboardingTenantId, studentId, setStudentId, teacherId, setTeacherId }}>
       {children}
     </NavigationContext.Provider>
   );

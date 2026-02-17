@@ -47,7 +47,7 @@ function TeacherStatusPill({ status }) {
   );
 }
 
-function TeacherCard({ teacher }) {
+function TeacherCard({ teacher, onViewProfile }) {
   return (
     <View style={styles.teacherCard}>
       <Pressable style={styles.kebabBtn}>
@@ -67,7 +67,12 @@ function TeacherCard({ teacher }) {
         <MaterialCommunityIcons name="book-open-page-variant" size={16} color={colors.textSecondary} />
         <Text style={styles.classesText}>{teacher.classes} Classes</Text>
       </View>
-      <TeacherStatusPill status={teacher.status} />
+      <View style={styles.cardFooter}>
+        <TeacherStatusPill status={teacher.status} />
+        <Pressable style={styles.viewProfileBtn} onPress={() => onViewProfile(teacher.id)}>
+          <Text style={styles.viewProfileText}>View Profile</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -156,7 +161,7 @@ export function TeacherManagementContent() {
         </View>
         <View style={styles.teacherGrid}>
           {TEACHERS.map((t) => (
-            <TeacherCard key={t.id} teacher={t} />
+            <TeacherCard key={t.id} teacher={t} onViewProfile={(id) => goTo('teacher-profile', { teacherId: id })} />
           ))}
         </View>
       </View>
@@ -255,8 +260,11 @@ const styles = StyleSheet.create({
   subjectPillText: { fontSize: 12, color: colors.primary },
   classesRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
   classesText: { ...typography.small, color: colors.textSecondary },
+  cardFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
   statusPill: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: radii.pill, alignSelf: 'flex-start' },
   statusText: { fontSize: 11, fontWeight: '600', color: colors.white },
+  viewProfileBtn: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: radii.pill, borderWidth: 1, borderColor: colors.borderSubtle, backgroundColor: colors.white },
+  viewProfileText: { fontSize: 12, color: colors.textPrimary, fontWeight: '500' },
   viewTimetableLink: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   viewTimetableText: { ...typography.bodySmall, color: colors.primary, fontWeight: '500' },
   classroomsGrid: {

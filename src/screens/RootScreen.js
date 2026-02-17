@@ -15,6 +15,7 @@ import { AnalyticsScreen } from './AnalyticsScreen';
 import { ManageScheduleScreen } from './ManageScheduleScreen';
 import { ReportsScreen } from './ReportsScreen';
 import { StudentProfileScreen } from './StudentProfileScreen';
+import { TeacherProfileScreen } from './TeacherProfileScreen';
 import { colors } from '../theme/colors';
 
 export function RootScreen() {
@@ -59,6 +60,7 @@ export function RootScreen() {
     if (screen === 'manage-schedule') return <ManageScheduleScreen />;
     if (screen === 'reports') return <ReportsScreen />;
     if (screen === 'student-profile') return <StudentProfileScreen />;
+    if (screen === 'teacher-profile') return <TeacherProfileScreen />;
     if (screen === 'landing') return <LandingScreen />;
     return <DashboardScreen />;
   }

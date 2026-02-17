@@ -7,7 +7,9 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useAuth } from '../contexts/AuthContext';
 import { useNavigation } from '../contexts/NavigationContext';
+import { login } from '../api/auth';
 import { AuthCard } from '../components/auth/AuthCard';
 import { AuthInput } from '../components/auth/AuthInput';
 import { Logo } from '../components/landing/Logo';
@@ -23,10 +25,26 @@ function IconLock() {
 }
 
 export function LoginScreen() {
+  const { setAuth } = useAuth();
   const { goTo } = useNavigation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [keepSignedIn, setKeepSignedIn] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleSignIn = async () => {
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      const response = await login(email, password);
+      setAuth(response);
+    } catch (e) {
+      setError(e.message || 'Sign in failed');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <View style={styles.page}>
@@ -76,11 +94,14 @@ export function LoginScreen() {
             <View style={[styles.checkbox, keepSignedIn && styles.checkboxChecked]} />
             <Text style={styles.checkboxLabel}>Keep me signed in</Text>
           </Pressable>
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
           <Pressable
-            style={({ pressed }) => [styles.signInBtn, pressed && styles.pressed]}
+            style={({ pressed }) => [styles.signInBtn, (pressed || isSubmitting) && styles.pressed]}
+            onPress={handleSignIn}
+            disabled={isSubmitting}
             accessibilityRole="button"
           >
-            <Text style={styles.signInBtnText}>Sign In</Text>
+            <Text style={styles.signInBtnText}>{isSubmitting ? 'Signing in…' : 'Sign In'}</Text>
           </Pressable>
           <View style={styles.divider}>
             <View style={styles.dividerLine} />
@@ -193,6 +214,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   signInBtnText: { fontSize: 16, fontWeight: '600', color: colors.white },
+  errorText: { color: '#b91c1c', fontSize: 14, marginBottom: 12 },
   divider: {
     flexDirection: 'row',
     alignItems: 'center',

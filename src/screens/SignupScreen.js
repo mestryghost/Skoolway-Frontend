@@ -6,7 +6,9 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useAuth } from '../contexts/AuthContext';
 import { useNavigation } from '../contexts/NavigationContext';
+import { signup } from '../api/onboarding';
 import { AuthCard } from '../components/auth/AuthCard';
 import { AuthInput } from '../components/auth/AuthInput';
 import { Logo } from '../components/landing/Logo';
@@ -22,11 +24,32 @@ function IconLock() {
 }
 
 export function SignupScreen() {
+  const { setAuth } = useAuth();
   const { goTo } = useNavigation();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleSignUp = async () => {
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      const response = await signup({ fullName: name, email, phone: phone || undefined, password });
+      setAuth(response);
+    } catch (e) {
+      setError(e.message || 'Sign up failed');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <View style={styles.page}>
@@ -56,6 +79,12 @@ export function SignupScreen() {
             icon={<IconEnvelope />}
           />
           <AuthInput
+            label="Phone number"
+            placeholder="Optional"
+            value={phone}
+            onChangeText={setPhone}
+          />
+          <AuthInput
             label="Password"
             placeholder="••••••••"
             value={password}
@@ -71,11 +100,14 @@ export function SignupScreen() {
             secureTextEntry
             icon={<IconLock />}
           />
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
           <Pressable
-            style={({ pressed }) => [styles.signUpBtn, pressed && styles.pressed]}
+            style={({ pressed }) => [styles.signUpBtn, (pressed || isSubmitting) && styles.pressed]}
+            onPress={handleSignUp}
+            disabled={isSubmitting}
             accessibilityRole="button"
           >
-            <Text style={styles.signUpBtnText}>Sign Up</Text>
+            <Text style={styles.signUpBtnText}>{isSubmitting ? 'Creating account…' : 'Sign Up'}</Text>
           </Pressable>
           <View style={styles.divider}>
             <View style={styles.dividerLine} />
@@ -142,6 +174,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   signUpBtnText: { fontSize: 16, fontWeight: '600', color: colors.white },
+  errorText: { color: '#b91c1c', fontSize: 14, marginBottom: 12 },
   divider: {
     flexDirection: 'row',
     alignItems: 'center',

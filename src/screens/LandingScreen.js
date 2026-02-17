@@ -4,10 +4,6 @@ import { colors } from '../theme/colors';
 import {
   Header,
   Hero,
-  FeatureChips,
-  FeatureGrid,
-  TestimonialsSection,
-  PricingSection,
   LeadFormSection,
   Footer,
 } from '../components/landing';
@@ -28,10 +24,6 @@ export function LandingScreen() {
       >
         <Header scrolled={scrolled} />
         <Hero />
-        <FeatureChips />
-        <FeatureGrid />
-        <TestimonialsSection />
-        <PricingSection />
         <LeadFormSection />
         <Footer />
       </ScrollView>

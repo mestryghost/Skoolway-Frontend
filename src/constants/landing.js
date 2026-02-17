@@ -3,10 +3,10 @@
  */
 export const landingCopy = {
   hero: {
-    title: 'The Intelligent Operating System for ',
-    titleHighlight: 'Modern Schools',
+    title: 'A smarter school experience ',
+    titleHighlight: 'shaped by clarity, connection, and growth.',
     subtitle:
-      'Manage students, attendance, transport, and assessments in one place. Built for multi-tenant schools.',
+      'One platform for academics, transport, and student growth—real-time bus tracking, progress insights, and clearer operations so every school can be safer, smarter, and ready for what’s next.',
     ctaPrimary: 'Start Free Trial',
     ctaSecondary: 'Request Demo',
     trust: 'Trusted by 1,200+ schools',

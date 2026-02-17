@@ -5,17 +5,24 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useAuth } from '../../contexts/AuthContext';
 import { useNavigation } from '../../contexts/NavigationContext';
 import { colors } from '../../theme/colors';
 import { spacing, radii } from '../../theme/spacing';
 import { Logo } from './Logo';
 
 export function Header({ scrolled = false }) {
+  const { isAuthenticated, logout } = useAuth();
   const { goTo } = useNavigation();
   const headerStyle = [
     styles.header,
     scrolled && styles.headerScrolled,
   ];
+
+  const handleLogout = async () => {
+    await logout();
+    goTo('landing');
+  };
 
   return (
     <View
@@ -28,25 +35,48 @@ export function Header({ scrolled = false }) {
           <Logo />
         </Pressable>
         <View style={styles.actions}>
-          <Pressable
-            style={({ pressed }) => [styles.signIn, pressed && styles.pressed]}
-            onPress={() => goTo('login')}
-            accessibilityRole="link"
-            accessibilityLabel="Sign in"
-          >
-            <Text style={styles.signInText}>Sign in</Text>
-          </Pressable>
-          <Pressable
-            style={({ pressed }) => [
-              styles.cta,
-              pressed && styles.ctaPressed,
-            ]}
-            onPress={() => goTo('signup')}
-            accessibilityRole="button"
-            accessibilityLabel="Get Started"
-          >
-            <Text style={styles.ctaText}>Get Started</Text>
-          </Pressable>
+          {isAuthenticated ? (
+            <>
+              <Pressable
+                style={({ pressed }) => [styles.cta, pressed && styles.ctaPressed]}
+                onPress={() => goTo('dashboard')}
+                accessibilityRole="button"
+                accessibilityLabel="Dashboard"
+              >
+                <Text style={styles.ctaText}>Dashboard</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [styles.signIn, pressed && styles.pressed]}
+                onPress={handleLogout}
+                accessibilityRole="button"
+                accessibilityLabel="Log out"
+              >
+                <Text style={styles.signInText}>Log out</Text>
+              </Pressable>
+            </>
+          ) : (
+            <>
+              <Pressable
+                style={({ pressed }) => [styles.signIn, pressed && styles.pressed]}
+                onPress={() => goTo('login')}
+                accessibilityRole="link"
+                accessibilityLabel="Sign in"
+              >
+                <Text style={styles.signInText}>Sign in</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.cta,
+                  pressed && styles.ctaPressed,
+                ]}
+                onPress={() => goTo('signup')}
+                accessibilityRole="button"
+                accessibilityLabel="Get Started"
+              >
+                <Text style={styles.ctaText}>Get Started</Text>
+              </Pressable>
+            </>
+          )}
         </View>
       </View>
     </View>

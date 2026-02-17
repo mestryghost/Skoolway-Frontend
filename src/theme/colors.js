@@ -17,4 +17,16 @@ export const colors = {
   white: '#FFFFFF',
   authBackground: '#F3F5F7',
   inputBackground: '#F3F4F6',
+  // Dashboard (sidebar, nav, cards)
+  dashboardSidebar: '#1E293B',
+  dashboardSidebarText: '#94A3B8',
+  dashboardSidebarActive: '#6B4EF6',
+  dashboardNavBg: '#FFFFFF',
+  dashboardWelcomeBg: '#EDE9FE',
+  chartBar: '#6B4EF6',
+  success: '#10B981',
+  danger: '#EF4444',
+  badgeNew: '#EF4444',
+  statusOnLeave: '#3B82F6',
+  statusOnLeaveOrange: '#EA580C',
 };

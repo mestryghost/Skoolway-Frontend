@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useNavigation } from '../../contexts/NavigationContext';
 import { colors } from '../../theme/colors';
 import { spacing, radii } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
@@ -37,12 +38,17 @@ function StatusPill({ status }) {
 }
 
 export function StudentDirectoryContent() {
+  const { goTo } = useNavigation();
   const [filter, setFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [addStudentOpen, setAddStudentOpen] = useState(false);
   const [importCsvOpen, setImportCsvOpen] = useState(false);
   const perPage = 5;
   const totalPages = Math.ceil(TOTAL_RESULTS / perPage);
+
+  const handleViewProfile = (studentId) => {
+    goTo('student-profile', { studentId });
+  };
 
   return (
     <>
@@ -119,7 +125,7 @@ export function StudentDirectoryContent() {
               {s.hasPhone && <MaterialCommunityIcons name="phone-outline" size={14} color={colors.textSecondary} style={styles.inlineIcon} />}
             </View>
             <View style={styles.colActions}>
-              <Pressable style={styles.viewProfileBtn}>
+              <Pressable style={styles.viewProfileBtn} onPress={() => handleViewProfile(s.id)}>
                 <Text style={styles.viewProfileText}>View Profile</Text>
               </Pressable>
               <Pressable style={styles.kebabBtn}>

@@ -14,6 +14,7 @@ import { TransportScreen } from './TransportScreen';
 import { AnalyticsScreen } from './AnalyticsScreen';
 import { ManageScheduleScreen } from './ManageScheduleScreen';
 import { ReportsScreen } from './ReportsScreen';
+import { StudentProfileScreen } from './StudentProfileScreen';
 import { colors } from '../theme/colors';
 
 export function RootScreen() {
@@ -57,6 +58,7 @@ export function RootScreen() {
     if (screen === 'analytics') return <AnalyticsScreen />;
     if (screen === 'manage-schedule') return <ManageScheduleScreen />;
     if (screen === 'reports') return <ReportsScreen />;
+    if (screen === 'student-profile') return <StudentProfileScreen />;
     if (screen === 'landing') return <LandingScreen />;
     return <DashboardScreen />;
   }

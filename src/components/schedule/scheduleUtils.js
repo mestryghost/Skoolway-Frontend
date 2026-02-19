@@ -1,13 +1,15 @@
 /**
- * Build display rows from schedule config: P1..P(n), optional Break row, then remaining periods.
- * firstPeriodStartTime "HH:mm", periodDurationMinutes, breakDurationMinutes.
+ * Build display rows from schedule config: P1..P(n), with break rows after specified periods.
+ * config.breaks = [{ afterPeriodIndex, durationMinutes, label }] – e.g. short break after P2, lunch after P4.
+ * Lesson periods all use the same duration; each break can have a different duration and label.
  */
 export function buildPeriodsDisplay(config) {
   if (!config) return [];
-  const { periodCount, breakAfterPeriod, periodDurationMinutes, firstPeriodStartTime, breakDurationMinutes } = config;
+  const { periodCount, periodDurationMinutes, firstPeriodStartTime, breaks = [] } = config;
   const rows = [];
   const [h, m] = (firstPeriodStartTime || '08:00').split(':').map(Number);
   let minutes = (h || 0) * 60 + (m || 0);
+  const breakByPeriod = new Map((breaks || []).map((b) => [b.afterPeriodIndex, b]));
 
   for (let p = 1; p <= periodCount; p++) {
     const start = `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
@@ -20,9 +22,15 @@ export function buildPeriodsDisplay(config) {
       time: `${start} – ${end}`,
       rowIndex: rows.length,
     });
-    if (breakAfterPeriod > 0 && p === breakAfterPeriod) {
-      rows.push({ type: 'break', rowIndex: rows.length });
-      minutes += breakDurationMinutes || 15;
+    const breakDef = breakByPeriod.get(p);
+    if (breakDef && breakDef.durationMinutes > 0) {
+      rows.push({
+        type: 'break',
+        rowIndex: rows.length,
+        label: breakDef.label || 'Break',
+        durationMinutes: breakDef.durationMinutes,
+      });
+      minutes += breakDef.durationMinutes;
     }
   }
   return rows;

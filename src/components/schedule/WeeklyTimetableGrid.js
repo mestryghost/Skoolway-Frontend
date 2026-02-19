@@ -112,7 +112,12 @@ export function WeeklyTimetableGrid({
             <View key={periodRowIndex} style={styles.bodyRow}>
               <View style={styles.periodCell}>
                 {row.type === 'break' ? (
-                  <Text style={styles.periodLabel}>Break</Text>
+                  <>
+                    <Text style={styles.periodLabel}>{row.label || 'Break'}</Text>
+                    {row.durationMinutes != null && (
+                      <Text style={styles.periodTime}>{row.durationMinutes} min</Text>
+                    )}
+                  </>
                 ) : (
                   <>
                     <Text style={styles.periodLabel}>{row.label}</Text>

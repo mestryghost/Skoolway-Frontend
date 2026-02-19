@@ -21,4 +21,5 @@ export const radii = {
   card: 20,
   cardSmall: 16,
   button: 999,
+  input: 8,
 };

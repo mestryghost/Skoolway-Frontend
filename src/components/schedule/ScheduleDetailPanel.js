@@ -4,7 +4,7 @@ import { colors } from '../../theme/colors';
 import { spacing, radii } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 
-export function ScheduleDetailPanel({ slot, event, onClose }) {
+export function ScheduleDetailPanel({ slot, event, onClose, onEditSlot }) {
   if (!slot && !event) return null;
 
   return (
@@ -16,14 +16,14 @@ export function ScheduleDetailPanel({ slot, event, onClose }) {
         </Pressable>
       </View>
       <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
-        {slot && <SlotDetailContent slot={slot} />}
+        {slot && <SlotDetailContent slot={slot} onEdit={onEditSlot} />}
         {event && <EventDetailContent event={event} />}
       </ScrollView>
     </View>
   );
 }
 
-function SlotDetailContent({ slot }) {
+function SlotDetailContent({ slot, onEdit }) {
   const { dayLabel, periodLabel, timeRange, periodSlots, selectedSlot } = slot;
   const periodTitle = dayLabel ? `${dayLabel} · ${periodLabel}` : periodLabel;
   return (
@@ -53,20 +53,16 @@ function SlotDetailContent({ slot }) {
               <Text style={styles.statText}>{selectedSlot.teacher}</Text>
             </View>
             <View style={styles.statRow}>
-              <MaterialCommunityIcons name="account-group" size={18} color={colors.textSecondary} />
-              <Text style={styles.statText}>{selectedSlot.studentCount} students</Text>
-            </View>
-            <View style={styles.statRow}>
               <MaterialCommunityIcons name="door" size={18} color={colors.textSecondary} />
               <Text style={styles.statText}>Room {selectedSlot.room}</Text>
             </View>
-            {selectedSlot.attendance != null && (
-              <View style={styles.statRow}>
-                <MaterialCommunityIcons name="chart-check" size={18} color={colors.textSecondary} />
-                <Text style={styles.statText}>Attendance: {selectedSlot.attendance}%</Text>
-              </View>
-            )}
           </View>
+          {onEdit && (
+            <Pressable style={styles.editBtn} onPress={() => onEdit(slot)}>
+              <MaterialCommunityIcons name="pencil" size={18} color={colors.primary} />
+              <Text style={styles.editBtnText}>Edit slot</Text>
+            </Pressable>
+          )}
         </View>
       )}
     </>
@@ -135,4 +131,16 @@ const styles = StyleSheet.create({
   eventMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
   eventDate: { ...typography.bodySmall, color: colors.textPrimary },
   eventDescription: { ...typography.bodySmall, color: colors.textSecondary, lineHeight: 22 },
+  editBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: radii.pill,
+    backgroundColor: colors.inputBackground,
+    alignSelf: 'flex-start',
+  },
+  editBtnText: { ...typography.bodySmall, color: colors.primary, fontWeight: '600' },
 });

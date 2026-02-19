@@ -27,3 +27,18 @@ export async function fetchParents({ page = 1, pageSize = 20, status } = {}) {
   return request(`/api/parents?${params.toString()}`);
 }
 
+export async function searchParents(query, { pageSize = 10 } = {}) {
+  const params = new URLSearchParams();
+  params.set('page', '1');
+  params.set('pageSize', String(pageSize));
+  if (query) params.set('query', query);
+  return request(`/api/parents?${params.toString()}`);
+}
+
+export async function createParent(body) {
+  return request('/api/parents', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+

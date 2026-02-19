@@ -17,20 +17,11 @@ async function request(path, options = {}) {
   return data;
 }
 
-export async function getMe() {
-  const res = await fetch(`${API_BASE_URL}/api/auth/me`, { credentials });
-  if (res.status === 401) return null;
-  if (!res.ok) throw new Error('Session check failed');
-  return res.json();
-}
-
-export async function login(email, password) {
-  return request('/api/auth/login', {
-    method: 'POST',
-    body: JSON.stringify({ email, password }),
-  });
-}
-
-export async function logout() {
-  return request('/api/auth/logout', { method: 'POST' });
+/**
+ * Returns the tenant's classes (grade/section options) from onboarding structure.
+ * Used for GRADE LEVEL dropdown in Add Student and similar forms.
+ */
+export async function getStructureClasses() {
+  const data = await request('/api/structure/classes');
+  return data.items ?? [];
 }

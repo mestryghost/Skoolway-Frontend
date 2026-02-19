@@ -13,7 +13,10 @@ async function request(path, options = {}) {
     },
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || data.message || res.statusText);
+  if (!res.ok) {
+    const message = data.detail ?? data.error ?? data.message ?? res.statusText;
+    throw new Error(message);
+  }
   return data;
 }
 

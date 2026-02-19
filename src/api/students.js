@@ -31,3 +31,18 @@ export async function fetchStudentProfile(id) {
   return request(`/api/students/${id}`);
 }
 
+export async function searchStudents(query, { pageSize = 10 } = {}) {
+  const params = new URLSearchParams();
+  params.set('page', '1');
+  params.set('pageSize', String(pageSize));
+  if (query) params.set('query', query);
+  return request(`/api/students?${params.toString()}`);
+}
+
+export async function createStudent(body) {
+  return request('/api/students', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+

@@ -11,30 +11,49 @@ const DEFAULT_BREAKS = [
 ];
 
 function BreakRow({ breakItem, periodCount, onChange, onRemove, canRemove }) {
+  // Local display string so user can type e.g. "3" or "12" without clamping on every keystroke
+  const [afterPeriodText, setAfterPeriodText] = useState(String(breakItem.afterPeriodIndex));
+  const [durationText, setDurationText] = useState(String(breakItem.durationMinutes));
+
+  useEffect(() => {
+    setAfterPeriodText(String(breakItem.afterPeriodIndex));
+    setDurationText(String(breakItem.durationMinutes));
+  }, [breakItem.afterPeriodIndex, breakItem.durationMinutes]);
+
+  const commitAfterPeriod = () => {
+    const n = parseInt(afterPeriodText, 10);
+    const clamped = Number.isNaN(n) ? 1 : Math.max(1, Math.min(periodCount, n));
+    setAfterPeriodText(String(clamped));
+    onChange({ ...breakItem, afterPeriodIndex: clamped });
+  };
+
+  const commitDuration = () => {
+    const n = parseInt(durationText, 10);
+    const clamped = Number.isNaN(n) ? 0 : Math.max(0, Math.min(120, n));
+    setDurationText(String(clamped));
+    onChange({ ...breakItem, durationMinutes: clamped });
+  };
+
   return (
     <View style={styles.breakRow}>
       <View style={styles.breakRowLeft}>
         <Text style={styles.breakRowLabel}>After period</Text>
         <TextInput
           style={[styles.input, styles.inputSmall]}
-          value={String(breakItem.afterPeriodIndex)}
-          onChangeText={(t) => {
-            const n = Math.max(1, Math.min(periodCount, parseInt(t, 10) || 1));
-            onChange({ ...breakItem, afterPeriodIndex: n });
-          }}
+          value={afterPeriodText}
+          onChangeText={setAfterPeriodText}
+          onBlur={commitAfterPeriod}
           keyboardType="number-pad"
-          placeholder="2"
+          placeholder="e.g. 2"
         />
       </View>
       <View style={styles.breakRowMid}>
         <Text style={styles.breakRowLabel}>Duration (min)</Text>
         <TextInput
           style={[styles.input, styles.inputSmall]}
-          value={String(breakItem.durationMinutes)}
-          onChangeText={(t) => {
-            const n = Math.max(0, Math.min(120, parseInt(t, 10) || 0));
-            onChange({ ...breakItem, durationMinutes: n });
-          }}
+          value={durationText}
+          onChangeText={setDurationText}
+          onBlur={commitDuration}
           keyboardType="number-pad"
           placeholder="15"
         />
@@ -102,11 +121,15 @@ export function ScheduleConfigModal({ visible, config, onSave, onClose }) {
       return;
     }
     const validBreaks = breaks
-      .filter((b) => b.afterPeriodIndex >= 1 && b.afterPeriodIndex <= periodCount && b.durationMinutes >= 0 && b.durationMinutes <= 120)
+      .filter((b) => {
+        const ap = Number(b.afterPeriodIndex);
+        const dm = Number(b.durationMinutes);
+        return ap >= 1 && ap <= periodCount && dm >= 0 && dm <= 120;
+      })
       .map((b) => ({
-        afterPeriodIndex: b.afterPeriodIndex,
-        durationMinutes: b.durationMinutes,
-        label: b.label?.trim() || null,
+        afterPeriodIndex: Number(b.afterPeriodIndex),
+        durationMinutes: Number(b.durationMinutes),
+        label: (b.label && b.label.trim()) ? b.label.trim() : null,
       }));
     const unique = validBreaks.filter((b, i, arr) => arr.findIndex((x) => x.afterPeriodIndex === b.afterPeriodIndex) === i);
     setError(null);

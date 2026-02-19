@@ -2,14 +2,13 @@ import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-na
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '../../contexts/NavigationContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { Logo } from '../landing/Logo';
 import { colors } from '../../theme/colors';
 import { useEffect, useState } from 'react';
 import { fetchUnreadCount } from '../../api/notifications';
 
 export function DashboardTopNav({ onMenuPress }) {
   const { goTo } = useNavigation();
-  const { user } = useAuth();
+  const { user, schoolName } = useAuth();
   const displayName = user?.fullName?.split(' ')[0] || 'Admin';
   const [unread, setUnread] = useState(0);
 
@@ -34,7 +33,9 @@ export function DashboardTopNav({ onMenuPress }) {
     <View style={styles.topNav}>
       <View style={styles.left}>
         <Pressable onPress={() => goTo('dashboard')} style={styles.logoWrap}>
-          <Logo />
+          <Text style={styles.schoolName} numberOfLines={1}>
+            {schoolName || 'Dashboard'}
+          </Text>
         </Pressable>
         {onMenuPress && (
           <Pressable onPress={onMenuPress} style={styles.menuBtn} accessibilityLabel="Open menu">
@@ -79,6 +80,12 @@ const styles = StyleSheet.create({
   },
   left: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   logoWrap: { padding: 4 },
+  schoolName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    maxWidth: 220,
+  },
   menuBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
   menuIcon: { fontSize: 22, color: colors.textPrimary },
   searchWrap: { flex: 1, maxWidth: 400, marginHorizontal: 24 },

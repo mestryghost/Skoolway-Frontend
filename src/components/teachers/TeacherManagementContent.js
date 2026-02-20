@@ -101,28 +101,22 @@ export function TeacherManagementContent() {
   const [teacherTotal, setTeacherTotal] = useState(0);
   const [loadingTeachers, setLoadingTeachers] = useState(false);
 
-  useEffect(() => {
-    let isMounted = true;
-    async function load() {
-      setLoadingTeachers(true);
-      try {
-        const data = await fetchTeachers({ page: 1, pageSize: 20 });
-        if (!isMounted) return;
-        setTeachers(data.items || []);
-        setTeacherTotal(data.total || 0);
-      } catch {
-        if (isMounted) {
-          setTeachers([]);
-          setTeacherTotal(0);
-        }
-      } finally {
-        if (isMounted) setLoadingTeachers(false);
-      }
+  async function loadTeachers() {
+    setLoadingTeachers(true);
+    try {
+      const data = await fetchTeachers({ page: 1, pageSize: 20 });
+      setTeachers(data.items || []);
+      setTeacherTotal(data.total || 0);
+    } catch {
+      setTeachers([]);
+      setTeacherTotal(0);
+    } finally {
+      setLoadingTeachers(false);
     }
-    load();
-    return () => {
-      isMounted = false;
-    };
+  }
+
+  useEffect(() => {
+    loadTeachers();
   }, []);
 
   return (
@@ -215,7 +209,7 @@ export function TeacherManagementContent() {
         </View>
       </View>
     </ScrollView>
-    <AddClassModal visible={addClassOpen} onClose={() => setAddClassOpen(false)} />
+    <AddClassModal visible={addClassOpen} onClose={() => setAddClassOpen(false)} onSaved={loadTeachers} />
     <AddTeacherModal visible={addTeacherOpen} onClose={() => setAddTeacherOpen(false)} />
     </>
   );

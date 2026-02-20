@@ -18,10 +18,21 @@ async function request(path, options = {}) {
 }
 
 /**
- * Returns the tenant's classes (grade/section options) from onboarding structure.
- * Used for GRADE LEVEL dropdown in Add Student and similar forms.
+ * Returns the tenant's classes (grade + stream) from structure.
+ * Used for GRADE LEVEL dropdown in Add Student and Add Class.
  */
 export async function getStructureClasses() {
   const data = await request('/api/structure/classes');
   return data.items ?? [];
+}
+
+/**
+ * Create a class = Grade (education level) + Stream. No room.
+ * @param {{ educationLevel: string, name: string }} body
+ */
+export async function createClass(body) {
+  return request('/api/structure/classes', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
 }

@@ -42,3 +42,10 @@ export async function createParent(body) {
   });
 }
 
+export async function updateParent(id, body) {
+  return request(`/api/parents/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  });
+}
+

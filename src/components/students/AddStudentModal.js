@@ -94,7 +94,7 @@ export function AddStudentModal({ visible, onClose }) {
         gradeLabel: selectedClass?.educationLevel ?? null,
         sectionLabel: selectedClass?.name ?? null,
         classId: selectedClass?.id ?? null,
-        dateOfBirth: dateOfBirth ? null : null,
+        dateOfBirth: dateOfBirth.trim() ? new Date(dateOfBirth.trim()).toISOString() : null,
         admissionDate: null,
         email: null,
         phone: null,
@@ -178,7 +178,13 @@ export function AddStudentModal({ visible, onClose }) {
                     <MaterialCommunityIcons name="chevron-down" size={20} color={colors.textSecondary} style={styles.selectIcon} />
                   </Pressable>
                   {gradePickerOpen && structureClasses.length > 0 && (
-                    <View style={styles.pickerList}>
+                    <ScrollView
+                      style={styles.pickerList}
+                      contentContainerStyle={styles.pickerListContent}
+                      nestedScrollEnabled
+                      keyboardShouldPersistTaps="handled"
+                      showsVerticalScrollIndicator
+                    >
                       <Pressable style={styles.pickerOption} onPress={() => selectGrade(null)}>
                         <Text style={styles.pickerOptionText}>None</Text>
                       </Pressable>
@@ -193,7 +199,7 @@ export function AddStudentModal({ visible, onClose }) {
                           </Text>
                         </Pressable>
                       ))}
-                    </View>
+                    </ScrollView>
                   )}
                   {gradePickerOpen && structureClasses.length === 0 && (
                     <View style={styles.pickerEmpty}>
@@ -322,7 +328,8 @@ const styles = StyleSheet.create({
   selectTriggerText: { ...typography.bodySmall, color: colors.textPrimary },
   selectIcon: { position: 'absolute', right: 12, top: '50%', marginTop: -10 },
   placeholder: { color: colors.textSecondary },
-  pickerList: { marginTop: 4, borderWidth: 1, borderColor: colors.borderSubtle, borderRadius: 8, maxHeight: 200, overflow: 'hidden' },
+  pickerList: { marginTop: 4, borderWidth: 1, borderColor: colors.borderSubtle, borderRadius: 8, maxHeight: 200 },
+  pickerListContent: { paddingBottom: 8 },
   pickerOption: { paddingVertical: 10, paddingHorizontal: 12, borderBottomWidth: 1, borderBottomColor: colors.borderSubtle },
   pickerOptionSelected: { backgroundColor: colors.inputBackground },
   pickerOptionText: { ...typography.bodySmall, color: colors.textPrimary },

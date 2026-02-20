@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '../../contexts/NavigationContext';
@@ -30,6 +30,19 @@ function StatusPill({ status }) {
   );
 }
 
+/** Returns array of page numbers to show, with null for ellipsis. e.g. [1, null, 4, 5, 6, null, 10] */
+function getPaginationPages(currentPage, totalPages) {
+  if (totalPages <= 1) return [1];
+  const set = new Set([1, totalPages, currentPage, currentPage - 1, currentPage + 1]);
+  const sorted = [...set].filter((p) => p >= 1 && p <= totalPages).sort((a, b) => a - b);
+  const result = [];
+  for (let i = 0; i < sorted.length; i++) {
+    if (i > 0 && sorted[i] - sorted[i - 1] > 1) result.push(null);
+    result.push(sorted[i]);
+  }
+  return result;
+}
+
 export function StudentDirectoryContent() {
   const { goTo } = useNavigation();
   const [filter, setFilter] = useState('all');
@@ -43,32 +56,28 @@ export function StudentDirectoryContent() {
   const perPage = 5;
   const totalPages = Math.max(1, Math.ceil(total / perPage));
 
-  useEffect(() => {
-    let isMounted = true;
-    async function load() {
-      setLoading(true);
-      setError(null);
-      try {
-        const statusParam =
-          filter === 'active' ? 'Active' :
-          filter === 'on-leave' ? 'OnLeave' :
-          filter === 'graduated' ? 'Graduated' :
-          undefined;
-        const data = await fetchStudents({ page, pageSize: perPage, status: statusParam });
-        if (!isMounted) return;
-        setStudents(data.items || []);
-        setTotal(data.total || 0);
-      } catch (e) {
-        if (isMounted) setError(e.message || 'Failed to load students');
-      } finally {
-        if (isMounted) setLoading(false);
-      }
+  const loadStudents = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const statusParam =
+        filter === 'active' ? 'Active' :
+        filter === 'on-leave' ? 'OnLeave' :
+        filter === 'graduated' ? 'Graduated' :
+        undefined;
+      const data = await fetchStudents({ page, pageSize: perPage, status: statusParam });
+      setStudents(data.items || []);
+      setTotal(data.total || 0);
+    } catch (e) {
+      setError(e.message || 'Failed to load students');
+    } finally {
+      setLoading(false);
     }
-    load();
-    return () => {
-      isMounted = false;
-    };
-  }, [page, filter]);
+  }, [page, filter, perPage]);
+
+  useEffect(() => {
+    loadStudents();
+  }, [loadStudents]);
 
   const handleViewProfile = (studentId) => {
     goTo('student-profile', { studentId });
@@ -195,22 +204,42 @@ export function StudentDirectoryContent() {
           Showing {(total === 0 ? 0 : (page - 1) * perPage + 1)} to {Math.min(page * perPage, total)} of {total} students
         </Text>
         <View style={styles.paginationControls}>
-          <Pressable style={styles.pageBtn} onPress={() => setPage((p) => Math.max(1, p - 1))}>
-            <Text style={styles.pageBtnText}>Previous</Text>
+          <Pressable
+            style={[styles.pageBtn, page <= 1 && styles.pageBtnDisabled]}
+            onPress={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page <= 1}
+          >
+            <Text style={[styles.pageBtnText, page <= 1 && styles.pageBtnTextDisabled]}>Previous</Text>
           </Pressable>
-          {[1, 2, 3].map((n) => (
-            <Pressable key={n} style={[styles.pageBtn, page === n && styles.pageBtnActive]} onPress={() => setPage(n)}>
-              <Text style={[styles.pageBtnText, page === n && styles.pageBtnTextActive]}>{n}</Text>
-            </Pressable>
-          ))}
-          <Pressable style={styles.pageBtn} onPress={() => setPage((p) => Math.min(totalPages, p + 1))}>
-            <Text style={styles.pageBtnText}>Next</Text>
+          {getPaginationPages(page, totalPages).map((n, i) =>
+            n === null ? (
+              <Text key={`ellipsis-${i}`} style={styles.pageEllipsis}>…</Text>
+            ) : (
+              <Pressable
+                key={n}
+                style={[styles.pageBtn, page === n && styles.pageBtnActive]}
+                onPress={() => setPage(n)}
+              >
+                <Text style={[styles.pageBtnText, page === n && styles.pageBtnTextActive]}>{n}</Text>
+              </Pressable>
+            )
+          )}
+          <Pressable
+            style={[styles.pageBtn, page >= totalPages && styles.pageBtnDisabled]}
+            onPress={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page >= totalPages}
+          >
+            <Text style={[styles.pageBtnText, page >= totalPages && styles.pageBtnTextDisabled]}>Next</Text>
           </Pressable>
         </View>
       </View>
     </ScrollView>
     <AddStudentModal visible={addStudentOpen} onClose={() => setAddStudentOpen(false)} />
-    <ImportCsvModal visible={importCsvOpen} onClose={() => setImportCsvOpen(false)} />
+    <ImportCsvModal
+      visible={importCsvOpen}
+      onClose={() => setImportCsvOpen(false)}
+      onSaved={loadStudents}
+    />
     </>
   );
 }
@@ -276,11 +305,29 @@ const styles = StyleSheet.create({
   kebabBtn: { padding: 4 },
   skeleton: { backgroundColor: colors.inputBackground },
   skeletonBar: { height: 10, borderRadius: 4, backgroundColor: colors.inputBackground },
-  pagination: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16 },
-  paginationInfo: { ...typography.small, color: colors.textSecondary },
-  paginationControls: { flexDirection: 'row', gap: 8 },
-  pageBtn: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: radii.pill, backgroundColor: colors.inputBackground },
+  pagination: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    rowGap: 12,
+  },
+  paginationInfo: { ...typography.small, color: colors.textSecondary, flexShrink: 0 },
+  paginationControls: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 6,
+    justifyContent: 'flex-end',
+    flex: 1,
+    minWidth: 0,
+  },
+  pageBtn: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: radii.pill, backgroundColor: colors.inputBackground, minWidth: 36, alignItems: 'center' },
   pageBtnActive: { backgroundColor: colors.primary },
+  pageBtnDisabled: { opacity: 0.5 },
   pageBtnText: { ...typography.small, color: colors.textPrimary },
   pageBtnTextActive: { color: colors.white },
+  pageBtnTextDisabled: { color: colors.textSecondary },
+  pageEllipsis: { ...typography.small, color: colors.textSecondary, paddingHorizontal: 4, minWidth: 24, textAlign: 'center' },
 });

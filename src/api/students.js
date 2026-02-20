@@ -8,6 +8,7 @@ async function request(path, options = {}) {
     ...options,
     credentials,
     headers: {
+      'Accept': 'application/json',
       'Content-Type': 'application/json',
       ...options.headers,
     },
@@ -43,6 +44,24 @@ export async function createStudent(body) {
   return request('/api/students', {
     method: 'POST',
     body: JSON.stringify(body),
+  });
+}
+
+export async function updateStudent(id, body) {
+  return request(`/api/students/update/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  });
+}
+
+/**
+ * @param {Array<{ firstName?: string, lastName?: string, email?: string, phone?: string, gradeLabel?: string, sectionLabel?: string, dateOfBirth?: string, address?: string }>} rows
+ * @returns {Promise<{ created: number, failed: number, errors: Array<{ row: number, message: string }> }>}
+ */
+export async function importStudents(rows) {
+  return request('/api/students/batch/import', {
+    method: 'POST',
+    body: JSON.stringify({ rows }),
   });
 }
 

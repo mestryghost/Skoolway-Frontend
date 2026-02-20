@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
@@ -92,32 +92,28 @@ export function ParentDirectoryContent() {
   const [error, setError] = useState(null);
   const totalPages = Math.max(1, Math.ceil(total / perPage));
 
-  useEffect(() => {
-    let isMounted = true;
-    async function load() {
-      setLoading(true);
-      setError(null);
-      try {
-        const statusParam =
-          filter === 'active' ? 'Active' :
-          filter === 'pending' ? 'Pending' :
-          filter === 'inactive' ? 'Inactive' :
-          undefined;
-        const data = await fetchParents({ page, pageSize: perPage, status: statusParam });
-        if (!isMounted) return;
-        setParents(data.items || []);
-        setTotal(data.total || 0);
-      } catch (e) {
-        if (isMounted) setError(e.message || 'Failed to load parents');
-      } finally {
-        if (isMounted) setLoading(false);
-      }
+  const loadParents = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const statusParam =
+        filter === 'active' ? 'Active' :
+        filter === 'pending' ? 'Pending' :
+        filter === 'inactive' ? 'Inactive' :
+        undefined;
+      const data = await fetchParents({ page, pageSize: perPage, status: statusParam });
+      setParents(data.items || []);
+      setTotal(data.total || 0);
+    } catch (e) {
+      setError(e.message || 'Failed to load parents');
+    } finally {
+      setLoading(false);
     }
-    load();
-    return () => {
-      isMounted = false;
-    };
   }, [page, filter]);
+
+  useEffect(() => {
+    loadParents();
+  }, [loadParents]);
 
   return (
     <>
@@ -211,7 +207,11 @@ export function ParentDirectoryContent() {
         </View>
       </View>
     </ScrollView>
-    <RegisterParentModal visible={registerParentOpen} onClose={() => setRegisterParentOpen(false)} />
+    <RegisterParentModal
+          visible={registerParentOpen}
+          onClose={() => setRegisterParentOpen(false)}
+          onSaved={() => { setRegisterParentOpen(false); loadParents(); }}
+        />
     </>
   );
 }

@@ -5,8 +5,9 @@ import { Breadcrumb } from '../common/Breadcrumb';
 import { colors } from '../../theme/colors';
 import { spacing, radii } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { fetchStudentProfile } from '../../api/students';
+import { EditStudentModal } from './EditStudentModal';
 
 function StatusBadge({ role }) {
   if (!role) return null;
@@ -42,10 +43,25 @@ export function StudentProfileContent() {
   const [student, setStudent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+
+  const loadProfile = useCallback(async () => {
+    if (!studentId) return;
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await fetchStudentProfile(studentId);
+      setStudent(data);
+    } catch (e) {
+      setError(e.message || 'Failed to load student');
+    } finally {
+      setLoading(false);
+    }
+  }, [studentId]);
 
   useEffect(() => {
     let isMounted = true;
-    async function load() {
+    (async () => {
       if (!studentId) {
         setError('No student selected.');
         setLoading(false);
@@ -62,11 +78,8 @@ export function StudentProfileContent() {
       } finally {
         if (isMounted) setLoading(false);
       }
-    }
-    load();
-    return () => {
-      isMounted = false;
-    };
+    })();
+    return () => { isMounted = false; };
   }, [studentId]);
 
   if (loading) {
@@ -118,11 +131,24 @@ export function StudentProfileContent() {
             </View>
           </View>
         </View>
-        <Pressable style={styles.backBtn} onPress={() => goTo('students')}>
-          <MaterialCommunityIcons name="arrow-left" size={20} color={colors.textPrimary} />
-          <Text style={styles.backBtnText}>Back</Text>
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable style={styles.editBtn} onPress={() => setEditModalVisible(true)}>
+            <MaterialCommunityIcons name="pencil" size={18} color={colors.white} />
+            <Text style={styles.editBtnText}>Edit</Text>
+          </Pressable>
+          <Pressable style={styles.backBtn} onPress={() => goTo('students')}>
+            <MaterialCommunityIcons name="arrow-left" size={20} color={colors.textPrimary} />
+            <Text style={styles.backBtnText}>Back</Text>
+          </Pressable>
+        </View>
       </View>
+
+      <EditStudentModal
+        visible={editModalVisible}
+        student={student}
+        onClose={() => setEditModalVisible(false)}
+        onSaved={() => { setEditModalVisible(false); loadProfile(); }}
+      />
 
       <View style={styles.grid}>
         {/* Student Information */}
@@ -229,6 +255,9 @@ const styles = StyleSheet.create({
   roleBadgeText: { fontSize: 11, fontWeight: '600', color: colors.white },
   graduatedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4, paddingHorizontal: 10, borderRadius: radii.pill, backgroundColor: colors.dashboardWelcomeBg },
   graduatedText: { fontSize: 11, fontWeight: '600', color: colors.success },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  editBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: radii.pill, backgroundColor: colors.primary },
+  editBtnText: { ...typography.bodySmall, color: colors.white, fontWeight: '600' },
   backBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: radii.pill, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderSubtle },
   backBtnText: { ...typography.bodySmall, color: colors.textPrimary },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
